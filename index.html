@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AGT Instant Coin Dispenser</title>
+  <style>
+    body { 
+      background: linear-gradient(to bottom, #0d47a1, #1976d2, #2196f3); 
+      color: white; 
+      font-family: 'Segoe UI', sans-serif; 
+      margin: 0; 
+      padding: 20px; 
+      text-align: center; 
+    }
+    .panel { 
+      background: rgba(0,0,0,0.3); 
+      padding: 30px; 
+      border-radius: 20px; 
+      max-width: 600px; 
+      margin: 30px auto; 
+    }
+    h1 { font-size: 2.2em; margin-bottom: 20px; }
+    .btn { 
+      background: #FF9800; 
+      color: white; 
+      border: none; 
+      padding: 14px 28px; 
+      font-size: 1.3em; 
+      border-radius: 10px; 
+      cursor: pointer; 
+      margin: 15px 0; 
+      display: inline-block; 
+    }
+    #status { 
+      margin-top: 25px; 
+      font-size: 1.3em; 
+      min-height: 30px; 
+    }
+    #receipt-details {
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+      display: none; /* Hidden until dispense */
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>AGT Instant Coin Dispenser</h1>
+    <p>Select to purchase your full crypto bundle instantly.</p>
+    
+    <!-- Stripe Buy Button -->
+    <script async src="https://js.stripe.com/v3/buy-button.js"></script>
+    <stripe-buy-button
+      buy-button-id="buy_btn_1SRJRlGZvDuiqgOEqk434sln"
+      publishable-key="pk_test_51SRIXVGZvDuiqgOEm52B8spXYx5nBccSCYqvNfC5kwa2pNMpAaFys188ABFSulny24lOkO8KbGSo38ZN00L1bSX800ZKPfVB7Q">
+    </stripe-buy-button>
+
+    <p>Or pay via mobile:</p>
+    <a href="https://buy.stripe.com/test_7sYdR9dpBdRsaDi4OwgnK00" target="_blank" class="btn">
+      Open Stripe Payment Link
+    </a>
+
+    <div id="status">⏳ Awaiting payment...</div>
+
+    <div id="receipt-details">
+        <h3>Wallet Details:</h3>
+        <p>URL: <span id="wallet-url"></span></p>
+        <p>Address: <span id="wallet-address"></span></p>
+        <p>Access Key: <span id="access-key"></span></p>
+    </div>
+  </div>
+
+  <script>
+    let lastTxId = null;
+
+    // Poll the backend to check for transaction status
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/vending/latest-transaction');
+        const data = await res.json();
+        
+        if (data.transaction_id && data.transaction_id !== lastTxId) {
+            lastTxId = data.transaction_id;
+            if (data.status === 'DISPENSED') {
+              clearInterval(pollInterval);
+              document.getElementById('status').innerHTML = 
+                `✅ <strong>Coins Dispensed!</strong>`;
+              
+              document.getElementById('wallet-url').textContent = data.wallet_url;
+              document.getElementById('wallet-address').textContent = data.wallet_address;
+              document.getElementById('access-key').textContent = data.access_key;
+
+              document.getElementById('receipt-details').style.display = 'block';
+            } else if (data.status === 'PAID') {
+              document.getElementById('status').textContent = '🔄 Funding your wallet...';
+            }
+        }
+      } catch (e) {
+        console.error("Error polling transaction status:", e);
+      }
+    }, 3000); // Poll every 3 seconds
+  </script>
+</body>
+</html>
